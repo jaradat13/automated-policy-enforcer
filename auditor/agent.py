@@ -63,32 +63,54 @@ def check_required_process(container_name, required_process="auditd"):
     except subprocess.CalledProcessError: pass
     return True
 
+def get_running_containers():
+    """Fetches a list of all currently running Docker containers."""
+    try:
+        result = subprocess.run(['docker', 'ps', '--format', '{{.Names}}'], capture_output=True, text=True, check=True)
+        return [c for c in result.stdout.strip().split('\n') if c]
+    except subprocess.CalledProcessError: return []
+
+def run_baseline_sweep():
+    """Performs a one-time audit of all existing infrastructure upon boot."""
+    print("\n[SYSTEM] Executing Baseline Sweep of existing infrastructure...")
+    containers = get_running_containers()
+    
+    if not containers:
+        print("  -> No existing containers found. Baseline is clean.")
+        return
+
+    for container in containers:
+        print(f"  -> Auditing existing container: '{container}'")
+        if not check_root_execution(container): continue
+        if not check_forbidden_ports(container, "POL-02", "22/tcp"): continue
+        if not check_forbidden_ports(container, "POL-05", "80/tcp"): continue
+        if not check_file_permissions(container): continue
+        if not check_required_process(container): continue
+        print(f"  [PASS] '{container}' is compliant.")
+        
+    print("[SYSTEM] Baseline Sweep complete.\n")
+
 def listen_to_events():
-    """V2.0: Subscribes directly to the Docker event stream for zero-latency monitoring."""
-    print("\n--- V2.0 Event-Driven Security Daemon Started ---")
+    """Subscribes directly to the Docker event stream for zero-latency monitoring."""
+    print("--- V2.1 Event-Driven Security Daemon Online ---")
     print("Listening for live container 'start' events. Press Ctrl+C to stop.\n")
     
     try:
-        # Open a persistent connection to the Docker event socket
         process = subprocess.Popen(
             ['docker', 'events', '--filter', 'event=start', '--format', '{{.Actor.Attributes.name}}'],
             stdout=subprocess.PIPE,
             text=True
         )
         
-        # Iterates infinitely, blocking until a new line is printed to stdout by the docker daemon
         for line in iter(process.stdout.readline, ''):
             container_name = line.strip()
             if container_name:
                 print(f"\n[EVENT] New container deployed: '{container_name}'. Initiating real-time audit...")
-                
-                # Execute the enforcement loop
                 if not check_root_execution(container_name): continue
                 if not check_forbidden_ports(container_name, "POL-02", "22/tcp"): continue
                 if not check_forbidden_ports(container_name, "POL-05", "80/tcp"): continue
                 if not check_file_permissions(container_name): continue
                 if not check_required_process(container_name): continue
-                
                 print(f"[PASS] Container '{container_name}' is fully compliant.")
                 
     except KeyboardInterrupt:
@@ -96,4 +118,9 @@ def listen_to_events():
         print("\n[INFO] Security Daemon gracefully stopped.")
 
 if __name__ == "__main__":
+    print("\n======================================================")
+    print("🛡️  Automated Compliance & Policy Enforcer - V2.1")
+    print("======================================================")
+    
+    run_baseline_sweep()
     listen_to_events()

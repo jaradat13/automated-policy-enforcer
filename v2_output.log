@@ -1,0 +1,8 @@
+
+--- V2.0 Event-Driven Security Daemon Started ---
+Listening for live container 'start' events. Press Ctrl+C to stop.
+
+
+[EVENT] New container deployed: 'instant_rogue'. Initiating real-time audit...
+[FAIL] POL-01: Container 'instant_rogue' running as root.
+  [!] Triggering automated remediation for 'instant_rogue'...

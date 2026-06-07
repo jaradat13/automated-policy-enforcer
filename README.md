@@ -1,12 +1,18 @@
-# 🛡️ Automated Compliance & Policy Enforcer
+# 🛡️ Automated Compliance & Policy Enforcer (V2.1)
 
-An end-to-end DevSecOps system that continuously monitors infrastructure, enforces strict security policies, and automatically remediates compliance violations in real-time.
+An enterprise-grade, event-driven DevSecOps system that continuously monitors infrastructure, enforces strict security policies, and automatically remediates compliance violations with zero latency.
 
 ## 🏗️ Architecture & Tech Stack
 
 * **Provisioning:** Terraform (Builds compliant and non-compliant Docker containers for testing)
-* **Auditing Engine:** Python (Continuous daemon, querying system state via Docker APIs and internal container execution)
+* **Auditing Engine:** Python (Event-driven daemon utilizing the Docker Event Stream)
 * **Remediation & Enforcement:** Ansible (Executes targeted playbooks to quarantine failing infrastructure)
+
+## ⚡ Key Enterprise Features
+
+1. **Zero-Latency Event Monitoring:** Subscribes directly to the `docker events` socket. Instead of resource-heavy polling, it intercepts container `start` events to catch rogue deployments the exact millisecond they spin up.
+2. **Pre-Flight Baseline Sweep:** Upon initialization, the engine audits the entire existing state of the infrastructure to neutralize legacy threats before transitioning to live monitoring.
+3. **Idempotent Test Harness:** Includes automated setup and teardown scripts to prevent state pollution and port collisions during CI/CD testing.
 
 ## 📜 Monitored Policies (Full-Stack Auditing)
 
@@ -19,18 +25,13 @@ An end-to-end DevSecOps system that continuously monitors infrastructure, enforc
 * **POL-03 (Strict File Permissions):** Sensitive files (e.g., `/etc/shadow`) must enforce strict `400` permissions.
 * **POL-04 (Required Auditing Tool):** Mandatory security daemons (e.g., `auditd`) must be actively running inside the container.
 
-## 🚀 How It Works (The Enforcement Loop)
+## 🚀 How to Run the Live Demo
 
-1. The **Python Daemon** fetches all running infrastructure every 5 seconds.
-2. It parses both the external API configuration and internal system state of each container against the defined YAML policy rules.
-3. If a container violates a policy, the daemon instantly triggers a targeted **Ansible Webhook**.
-4. Ansible safely quarantines and destroys the non-compliant container with zero human intervention.
+We have included an automated test harness that provisions the infrastructure, handles state cleanup, starts the daemon, and simulates a live attack to demonstrate the zero-latency reaction time.
 
-## 🚧 Production Readiness & Future Enhancements
+```bash
+# 1. Ensure the test harness is executable
+chmod +x test_v2.sh
 
-This architecture serves as a Proof of Concept (PoC). To scale this engine for a live enterprise environment, the following architectural upgrades would be required:
-
-1. **Event-Driven Execution:** Replace the 5-second polling loop with a direct hook into the Docker Event Stream to trigger audits asynchronously on container creation.
-2. **Native API Integration:** Refactor the Python agent to utilize the official Docker SDK for Python rather than executing CLI commands via `subprocess`.
-3. **Structured Logging:** Implement JSON-structured logging (e.g., Elasticsearch/Kibana) to track remediation events, replacing standard standard output.
-4. **Pre-Deployment Blocking:** Shift from reactive termination to proactive blocking using Kubernetes Admission Controllers (e.g., OPA Gatekeeper) to prevent non-compliant infrastructure from deploying initially.
+# 2. Execute the live demo
+./test_v2.sh 
