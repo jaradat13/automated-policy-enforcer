@@ -30,3 +30,27 @@ resource "docker_container" "compliant_app" {
   command = ["sleep", "infinity"]
   user    = "1000"
 }
+
+# 🔴 NON-COMPLIANT CONTAINER (Violates POL-02: Exposes SSH Port)
+resource "docker_container" "ssh_violator" {
+  name    = "ssh_violator"
+  image   = docker_image.alpine.image_id
+  command = ["sleep", "infinity"]
+  user    = "1000" # Compliant with POL-01
+  ports {
+    internal = 22
+    external = 2222
+  }
+}
+
+# 🔴 NON-COMPLIANT CONTAINER (Violates POL-05: Exposes HTTP Port)
+resource "docker_container" "http_violator" {
+  name    = "http_violator"
+  image   = docker_image.alpine.image_id
+  command = ["sleep", "infinity"]
+  user    = "1000" # Compliant with POL-01
+  ports {
+    internal = 80
+    external = 8080
+  }
+}
