@@ -16,7 +16,6 @@ policies:
     name: "Required Auditing Tool"
     check_type: "running_process"
     required_process: "auditd"
-
   - id: "POL-05"
     name: "No Plaintext Traffic"
     check_type: "exposed_ports"

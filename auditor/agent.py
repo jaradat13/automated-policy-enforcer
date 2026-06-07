@@ -1,17 +1,21 @@
 import subprocess
 import json
-import time
+import sys
 
 def trigger_remediation(container_name):
     print(f"  [!] Triggering automated remediation for '{container_name}'...")
     try:
-        subprocess.run([
+        result = subprocess.run([
             'ansible-playbook', 'configuration/remediation.yml', 
             '-e', f'target_container={container_name}'
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        print(f"  [SUCCESS] '{container_name}' safely quarantined.")
-    except subprocess.CalledProcessError:
-        print(f"  [ERROR] Remediation failed for '{container_name}'.")
+        ], capture_output=True, text=True)
+        
+        if result.returncode == 0 and "changed=0" not in result.stdout:
+            print(f"  [SUCCESS] '{container_name}' safely quarantined.")
+        else:
+            print(f"  [WARNING/ERROR] Remediation failed or made no changes.")
+    except Exception as e:
+        print(f"  [FATAL ERROR] {str(e)}")
 
 def check_root_execution(container_name):
     try:
@@ -37,7 +41,6 @@ def check_forbidden_ports(container_name, policy_id, forbidden_port):
     return True
 
 def check_file_permissions(container_name, target_file="/etc/shadow", expected_mask="400"):
-    """POL-03: Executes 'stat' inside the container to check file permissions."""
     try:
         result = subprocess.run(['docker', 'exec', container_name, 'stat', '-c', '%a', target_file], capture_output=True, text=True)
         if result.returncode == 0:
@@ -50,7 +53,6 @@ def check_file_permissions(container_name, target_file="/etc/shadow", expected_m
     return True
 
 def check_required_process(container_name, required_process="auditd"):
-    """POL-04: Executes 'ps' inside the container to verify required tools are running."""
     try:
         result = subprocess.run(['docker', 'exec', container_name, 'ps'], capture_output=True, text=True)
         if result.returncode == 0:
@@ -61,27 +63,37 @@ def check_required_process(container_name, required_process="auditd"):
     except subprocess.CalledProcessError: pass
     return True
 
-def get_running_containers():
-    try:
-        result = subprocess.run(['docker', 'ps', '--format', '{{.Names}}'], capture_output=True, text=True, check=True)
-        return [c for c in result.stdout.strip().split('\n') if c]
-    except subprocess.CalledProcessError: return []
-
-if __name__ == "__main__":
-    print("\n--- Full-Stack Compliance Daemon Started (5 Policies) ---")
-    print("Monitoring infrastructure every 5 seconds. Press Ctrl+C to stop.\n")
+def listen_to_events():
+    """V2.0: Subscribes directly to the Docker event stream for zero-latency monitoring."""
+    print("\n--- V2.0 Event-Driven Security Daemon Started ---")
+    print("Listening for live container 'start' events. Press Ctrl+C to stop.\n")
     
     try:
-        while True:
-            running_containers = get_running_containers()
-            for container in running_containers:
-                # If a container fails and is remediated, we skip the remaining checks for that loop
-                if not check_root_execution(container): continue
-                if not check_forbidden_ports(container, "POL-02", "22/tcp"): continue
-                if not check_forbidden_ports(container, "POL-05", "80/tcp"): continue
-                if not check_file_permissions(container): continue
-                if not check_required_process(container): continue
+        # Open a persistent connection to the Docker event socket
+        process = subprocess.Popen(
+            ['docker', 'events', '--filter', 'event=start', '--format', '{{.Actor.Attributes.name}}'],
+            stdout=subprocess.PIPE,
+            text=True
+        )
+        
+        # Iterates infinitely, blocking until a new line is printed to stdout by the docker daemon
+        for line in iter(process.stdout.readline, ''):
+            container_name = line.strip()
+            if container_name:
+                print(f"\n[EVENT] New container deployed: '{container_name}'. Initiating real-time audit...")
                 
-            time.sleep(5)
+                # Execute the enforcement loop
+                if not check_root_execution(container_name): continue
+                if not check_forbidden_ports(container_name, "POL-02", "22/tcp"): continue
+                if not check_forbidden_ports(container_name, "POL-05", "80/tcp"): continue
+                if not check_file_permissions(container_name): continue
+                if not check_required_process(container_name): continue
+                
+                print(f"[PASS] Container '{container_name}' is fully compliant.")
+                
     except KeyboardInterrupt:
-        print("\n[INFO] Security Daemon stopped by user.")
+        process.terminate()
+        print("\n[INFO] Security Daemon gracefully stopped.")
+
+if __name__ == "__main__":
+    listen_to_events()
