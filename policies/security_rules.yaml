@@ -1,0 +1,8 @@
+policies:
+  - id: "POL-01"
+    name: "Root Execution Ban"
+    target: "container"
+    check_type: "user_id"
+    condition: "not_equal"
+    expected_value: 0
+    remediation_action: "configuration/remediation.yml --tags fix_root"

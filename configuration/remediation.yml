@@ -1,0 +1,12 @@
+---
+- name: Automated Security Remediation Pipeline
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  
+  tasks:
+    - name: "Quarantine Violation: Stop and remove the non-compliant container"
+      community.docker.docker_container:
+        name: "{{ target_container }}"
+        state: absent
+      when: target_container is defined
