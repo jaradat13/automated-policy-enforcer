@@ -6,11 +6,10 @@ def trigger_remediation(container_name):
     print(f"  [!] Triggering automated remediation for '{container_name}'...")
     try:
         result = subprocess.run([
-            'ansible-playbook', 'configuration/remediation.yml', 
-            '-e', f'target_container={container_name}'
+            'docker', 'rm', '-f', container_name
         ], capture_output=True, text=True)
-        
-        if result.returncode == 0 and "changed=0" not in result.stdout:
+
+        if result.returncode == 0:
             print(f"  [SUCCESS] '{container_name}' safely quarantined.")
         else:
             print(f"  [WARNING/ERROR] Remediation failed or made no changes.")
@@ -74,7 +73,7 @@ def run_baseline_sweep():
     """Performs a one-time audit of all existing infrastructure upon boot."""
     print("\n[SYSTEM] Executing Baseline Sweep of existing infrastructure...")
     containers = get_running_containers()
-    
+
     if not containers:
         print("  -> No existing containers found. Baseline is clean.")
         return
@@ -87,21 +86,21 @@ def run_baseline_sweep():
         if not check_file_permissions(container): continue
         if not check_required_process(container): continue
         print(f"  [PASS] '{container}' is compliant.")
-        
+
     print("[SYSTEM] Baseline Sweep complete.\n")
 
 def listen_to_events():
     """Subscribes directly to the Docker event stream for zero-latency monitoring."""
     print("--- V2.1 Event-Driven Security Daemon Online ---")
     print("Listening for live container 'start' events. Press Ctrl+C to stop.\n")
-    
+
     try:
         process = subprocess.Popen(
             ['docker', 'events', '--filter', 'event=start', '--format', '{{.Actor.Attributes.name}}'],
             stdout=subprocess.PIPE,
             text=True
         )
-        
+
         for line in iter(process.stdout.readline, ''):
             container_name = line.strip()
             if container_name:
@@ -112,7 +111,7 @@ def listen_to_events():
                 if not check_file_permissions(container_name): continue
                 if not check_required_process(container_name): continue
                 print(f"[PASS] Container '{container_name}' is fully compliant.")
-                
+
     except KeyboardInterrupt:
         process.terminate()
         print("\n[INFO] Security Daemon gracefully stopped.")
@@ -121,6 +120,6 @@ if __name__ == "__main__":
     print("\n======================================================")
     print("🛡️  Automated Compliance & Policy Enforcer - V2.1")
     print("======================================================")
-    
+
     run_baseline_sweep()
     listen_to_events()

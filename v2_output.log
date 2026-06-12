@@ -1,8 +1,20 @@
 
---- V2.0 Event-Driven Security Daemon Started ---
+======================================================
+🛡️  Automated Compliance & Policy Enforcer - V2.1
+======================================================
+
+[SYSTEM] Executing Baseline Sweep of existing infrastructure...
+  -> No existing containers found. Baseline is clean.
+--- V2.1 Event-Driven Security Daemon Online ---
 Listening for live container 'start' events. Press Ctrl+C to stop.
 
 
 [EVENT] New container deployed: 'instant_rogue'. Initiating real-time audit...
 [FAIL] POL-01: Container 'instant_rogue' running as root.
   [!] Triggering automated remediation for 'instant_rogue'...
+  [FATAL ERROR] [Errno 2] No such file or directory: 'ansible-playbook'
+
+[EVENT] New container deployed: 'rogue_demo'. Initiating real-time audit...
+[FAIL] POL-01: Container 'rogue_demo' running as root.
+  [!] Triggering automated remediation for 'rogue_demo'...
+  [FATAL ERROR] [Errno 2] No such file or directory: 'ansible-playbook'
